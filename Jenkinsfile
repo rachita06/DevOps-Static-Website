@@ -1,8 +1,5 @@
 pipeline {
     agent any
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '5'))
-    }
     stages {
         stage('Checkout') {
             steps {
@@ -11,21 +8,18 @@ pipeline {
                     credentialsId: 'git-06'
             }
         }
-        stage('Check Files') {
+        stage('Deploy to EC2') {
             steps {
-                sh 'ls -ltr'
-            }
-        }
-        stage('Docker Build') {
-            steps {
-                sh 'docker build -t mysite .'
-            }
-        }
-        stage('Docker Run') {
-            steps {
-                sh 'docker stop mysite || true'
-                sh 'docker rm mysite || true'
-                sh 'docker run -d -p 80:80 --name mysite mysite'
+                sshagent(['ec2-ssh-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@3.136.44.122 "
+                            docker stop mysite || true
+                            docker rm mysite || true
+                            docker pull rachita06/mysite:latest
+                            docker run -d -p 80:80 --name mysite rachita06/mysite:latest
+                        "
+                    '''
+                }
             }
         }
     }
