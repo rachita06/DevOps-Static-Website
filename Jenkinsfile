@@ -1,11 +1,31 @@
 pipeline {
     agent any
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+    }
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/rachita06/DevOps-Static-Website.git',
                     credentialsId: 'git-06'
+            }
+        }
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t rachita06/mysite:latest .'
+            }
+        }
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-06',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker push rachita06/mysite:latest'
+                }
             }
         }
         stage('Deploy to EC2') {
